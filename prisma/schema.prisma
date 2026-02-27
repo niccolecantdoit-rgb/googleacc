@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum F2AType {
+  LINK
+  PHONE
+  UNKNOWN
+}
+
+model Account {
+  id                String      @id @default(cuid())
+  email             String      @unique
+  username          String?
+  passwordEnc       String
+  f2aType           F2AType     @default(UNKNOWN)
+  recoveryEmail     String?
+  recoveryPhone     String?
+  verificationPhone String?
+  order             Int         @default(0)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  accountTags       AccountTag[]
+
+  @@index([order])
+}
+
+model Tag {
+  id         String      @id @default(cuid())
+  name       String      @unique
+  order      Int         @default(0)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  accountTags AccountTag[]
+
+  @@index([order])
+}
+
+model AccountTag {
+  accountId String
+  tagId     String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, tagId])
+  @@index([tagId])
+}
