@@ -56,3 +56,11 @@ model AccountTag {
   @@unique([accountId, tagId])
   @@index([tagId])
 }
+
+model User {
+  id           Int      @id @default(1)
+  singletonKey String   @unique @default("singleton")
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
