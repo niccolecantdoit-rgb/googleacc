@@ -14,3 +14,7 @@
 - `Account.email`、`Tag.name` 添加唯一约束；`AccountTag` 使用 `@@unique([accountId, tagId])` 防止重复关联记录。
 - `Account.order`、`Tag.order` 设为 `Int @default(0)` 并建索引，提前支持拖拽排序持久化与后续按序查询。
 - 新增 `lib/prisma.ts` 全局单例封装，避免 Next.js 开发热重载下 PrismaClient 重复实例化导致连接膨胀。
+- 单用户鉴权采用 `User` 单表最小模型（`passwordHash` + `singletonKey @unique` + 固定默认 `id=1`），在数据库层硬性限制最多 1 条用户记录。
+- 会话 cookie 采用 `base64url(payload).HMAC-SHA256(signature)` 结构，签名密钥使用 `APP_SECRET`，避免服务端存储 session 状态并保证防篡改。
+- `cookie` 参数固定 `httpOnly + sameSite=lax`，并按 `NODE_ENV === "production"` 启用 `secure`，兼顾本地开发可用性与生产安全基线。
+- 鉴权路由策略：未初始化统一跳转 `/setup`；已初始化未登录只能访问 `/login`/`/logout`；`/setup` 在已初始化后强制禁用并重定向。

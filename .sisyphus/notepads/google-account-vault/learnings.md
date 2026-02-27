@@ -11,3 +11,7 @@
 - Prisma 在当前项目中使用 6.x 更贴合经典 `schema.prisma + .env` 工作流；7.x 会引入 datasource 配置变更，若沿用旧写法会触发 `P1012`。
 - Windows 中文路径场景下可直接使用 `npx prisma validate`、`npx prisma migrate dev --name init`，迁移目录会正常生成到 `prisma/migrations/*`。
 - `npx prisma migrate dev` 会自动生成本地 SQLite `dev.db`，需通过 `.gitignore` 忽略 `*.db` / `*.db-*` / `prisma/*.db*`，避免误提交数据库文件。
+- 单用户首次初始化流程可稳定落地为：访问受保护页 -> 重定向 `/setup` -> 写入用户哈希密码 -> 立即签发 cookie -> 跳回受保护页。
+- 使用 Next.js App Router 的 server action + `redirect()` 时，错误提示更适合通过 query string 回传（如 `/login?error=...`），避免引入额外状态管理。
+- `cookies()` 在服务端路径下统一管理更稳妥：登录写入、退出置空、受保护页读取；本项目用签名 cookie 即可满足最小会话能力。
+- Prisma `.prisma` 文件当前 LSP 未安装时，可用 `npx prisma validate` 补足 schema 级校验，避免仅靠构建链路漏掉模型错误。
