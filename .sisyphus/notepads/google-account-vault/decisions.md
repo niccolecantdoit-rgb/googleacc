@@ -18,3 +18,6 @@
 - 会话 cookie 采用 `base64url(payload).HMAC-SHA256(signature)` 结构，签名密钥使用 `APP_SECRET`，避免服务端存储 session 状态并保证防篡改。
 - `cookie` 参数固定 `httpOnly + sameSite=lax`，并按 `NODE_ENV === "production"` 启用 `secure`，兼顾本地开发可用性与生产安全基线。
 - 鉴权路由策略：未初始化统一跳转 `/setup`；已初始化未登录只能访问 `/login`/`/logout`；`/setup` 在已初始化后强制禁用并重定向。
+- `Account` 敏感字段采用“**Enc 加密存储 + Search 标准化索引**”双字段策略：`passwordEnc` 仅加密；`recoveryEmail/recoveryPhone/verificationPhone` 拆为 `*Enc`（AES-256-GCM）与 `*Search`（可 `contains` 查询）。
+- 字段命名统一为 `<field>Enc` 与 `<field>Search`，避免后续迁移时语义歧义；其中 `*Search` 明确承载检索职责，不承担保密职责。
+- 加密载荷格式约定为自描述版本前缀（`v1:iv:tag:ciphertext`），便于未来轮换算法/密钥策略时实现向后兼容解密分支。

@@ -15,3 +15,6 @@
 - 使用 Next.js App Router 的 server action + `redirect()` 时，错误提示更适合通过 query string 回传（如 `/login?error=...`），避免引入额外状态管理。
 - `cookies()` 在服务端路径下统一管理更稳妥：登录写入、退出置空、受保护页读取；本项目用签名 cookie 即可满足最小会话能力。
 - Prisma `.prisma` 文件当前 LSP 未安装时，可用 `npx prisma validate` 补足 schema 级校验，避免仅靠构建链路漏掉模型错误。
+- `ENCRYPTION_KEY` 在本项目约定为 **base64 编码后的 32 字节密钥**（解码后必须严格等于 32 bytes），否则应在启动/调用加密时立即抛错。
+- 推荐密钥生成方式：`node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`；生成后写入 `.env`，禁止将明文敏感数据或真实密钥提交到仓库。
+- AES-256-GCM 落地时需同时保存 `iv` 与 `authTag`；解密失败必须显式报错，避免静默吞错导致数据损坏难以定位。
