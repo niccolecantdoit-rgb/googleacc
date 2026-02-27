@@ -25,15 +25,21 @@ model Account {
   username          String?
   passwordEnc       String
   f2aType           F2AType     @default(UNKNOWN)
-  recoveryEmail     String?
-  recoveryPhone     String?
-  verificationPhone String?
+  recoveryEmailEnc    String?
+  recoveryEmailSearch String?
+  recoveryPhoneEnc    String?
+  recoveryPhoneSearch String?
+  verificationPhoneEnc    String?
+  verificationPhoneSearch String?
   order             Int         @default(0)
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
   accountTags       AccountTag[]
 
   @@index([order])
+  @@index([recoveryEmailSearch])
+  @@index([recoveryPhoneSearch])
+  @@index([verificationPhoneSearch])
 }
 
 model Tag {
