@@ -9,6 +9,9 @@ RUN npm ci
 # Copy the rest of the project files
 COPY . .
 
+# Generate Prisma Client after schema is available
+RUN npx prisma generate
+
 # Build the Next.js application
 RUN npm run build
 
