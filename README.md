@@ -43,4 +43,38 @@
 
 - `DATABASE_URL`：数据库连接字符串
 - `APP_SECRET`：应用级密钥（用于签名/会话等）
-- `ENCRYPTION_KEY`：业务数据加密密钥
+- `ENCRYPTION_KEY`：业务数据加密密钥（必须是 32 bytes 的 Base64 编码）
+
+## 最小手动验收流程（Manual Acceptance）
+
+### 运行前置
+
+必需环境变量：
+
+- `DATABASE_URL`
+- `APP_SECRET`
+- `ENCRYPTION_KEY`（必须是 32 bytes 的 Base64 编码）
+
+运行数据库迁移：
+
+```bash
+npx prisma migrate deploy
+```
+
+启动开发服务：
+
+```bash
+npm run dev
+```
+
+### 验收检查清单
+
+1) 首次访问会重定向到 `/setup`，并设置密码
+2) 完成 setup 后回到首页，看到 Vault UI
+3) 创建 tag
+4) 创建 account，包含 password 和 recovery 字段
+5) 编辑 account（通过 includeSensitive 加载敏感字段）并保存
+6) 通过 checkbox 分配 tag，并通过 drag-to-tag 分配 tag
+7) 拖拽重排 accounts，刷新页面确认顺序持久化
+8) 使用过滤器：keyword、f2aType、tags、onlyMissing
+9) Logout 后重定向到 `/login`
