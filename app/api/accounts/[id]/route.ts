@@ -2,13 +2,14 @@ import { Prisma, type F2AType } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "@/lib/api-auth";
-import { encryptString, normalizeSearchEmail, normalizeSearchPhone } from "@/lib/crypto";
+import { decryptString, encryptString, normalizeSearchEmail, normalizeSearchPhone } from "@/lib/crypto";
 import prisma from "@/lib/prisma";
 
 type AccountWithTags = {
   id: string;
   email: string;
   username: string | null;
+  passwordEnc?: string;
   f2aType: F2AType;
   order: number;
   createdAt: Date;
@@ -101,17 +102,59 @@ async function getAccountOrNull(id: string) {
   });
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+async function getAccountWithSensitiveOrNull(id: string) {
+  return prisma.account.findUnique({
+    where: { id },
+    select: {
+      ...ACCOUNT_SELECT,
+      passwordEnc: true,
+    },
+  });
+}
+
+export async function GET(request: NextRequest, context: RouteContext) {
   const auth = await requireApiAuth();
   if ("response" in auth) {
     return auth.response;
   }
 
   const { id } = await context.params;
-  const account = await getAccountOrNull(id);
+  const includeSensitive = request.nextUrl.searchParams.get("includeSensitive") === "1";
+  const account = includeSensitive ? await getAccountWithSensitiveOrNull(id) : await getAccountOrNull(id);
 
   if (!account) {
     return notFound();
+  }
+
+  if (includeSensitive) {
+    try {
+      const sensitive = {
+        password: decryptString(account.passwordEnc ?? ""),
+        recoveryEmail: account.recoveryEmailEnc ? decryptString(account.recoveryEmailEnc) : null,
+        recoveryPhone: account.recoveryPhoneEnc ? decryptString(account.recoveryPhoneEnc) : null,
+        verificationPhone: account.verificationPhoneEnc ? decryptString(account.verificationPhoneEnc) : null,
+      };
+
+      return NextResponse.json({
+        ok: true,
+        data: {
+          account: serializeAccount(account),
+          sensitive,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to decrypt sensitive fields.";
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "DECRYPT_FAILED",
+            message,
+          },
+        },
+        { status: 500 },
+      );
+    }
   }
 
   return NextResponse.json({
