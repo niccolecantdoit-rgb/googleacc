@@ -75,6 +75,7 @@ export default function VaultApp() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formBusy, setFormBusy] = useState(false);
   const [draggingAccountId, setDraggingAccountId] = useState<string | null>(null);
+  const [tagDropTargetId, setTagDropTargetId] = useState<string | null>(null);
 
   const tagNameById = useMemo(() => {
     return new Map(tags.map((tag) => [tag.id, tag.name]));
@@ -407,6 +408,32 @@ export default function VaultApp() {
 
   function handleAccountDragEnd() {
     setDraggingAccountId(null);
+    setTagDropTargetId(null);
+  }
+
+  function handleTagDragOver(event: DragEvent<HTMLLIElement>, tagId: string) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    if (tagDropTargetId !== tagId) {
+      setTagDropTargetId(tagId);
+    }
+  }
+
+  async function handleTagDrop(event: DragEvent<HTMLLIElement>, tagId: string) {
+    event.preventDefault();
+    const sourceId = draggingAccountId || event.dataTransfer.getData("text/plain");
+    setTagDropTargetId(null);
+    setDraggingAccountId(null);
+    if (!sourceId) {
+      return;
+    }
+    await toggleAccountTag(sourceId, tagId, true);
+  }
+
+  function handleTagDragLeave(tagId: string) {
+    if (tagDropTargetId === tagId) {
+      setTagDropTargetId(null);
+    }
   }
 
   return (
@@ -425,6 +452,7 @@ export default function VaultApp() {
 
       <section style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
         <h2>标签管理</h2>
+        <p style={{ margin: "6px 0 10px", color: "#666", fontSize: 13 }}>拖拽账号到标签上进行打标</p>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <input
             value={newTagName}
@@ -438,7 +466,18 @@ export default function VaultApp() {
 
         <ul style={{ display: "grid", gap: 8, margin: 0, paddingLeft: 18 }}>
           {tags.map((tag) => (
-            <li key={tag.id}>
+            <li
+              key={tag.id}
+              onDragOver={(event) => handleTagDragOver(event, tag.id)}
+              onDrop={(event) => void handleTagDrop(event, tag.id)}
+              onDragLeave={() => handleTagDragLeave(tag.id)}
+              style={{
+                border: tagDropTargetId === tag.id ? "1px dashed #1677ff" : "1px dashed transparent",
+                borderRadius: 6,
+                padding: "4px 6px",
+                transition: "border-color 120ms ease",
+              }}
+            >
               <span style={{ marginRight: 8 }}>{tag.name}</span>
               <button onClick={() => void renameTag(tag)} disabled={tagBusyId === tag.id}>
                 重命名
