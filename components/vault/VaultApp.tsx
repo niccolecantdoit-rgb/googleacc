@@ -43,6 +43,13 @@ type AccountFormState = {
   verificationPhone: string;
 };
 
+type AccountFilters = {
+  q: string;
+  f2aType: "" | F2AType;
+  tagIds: string[];
+  onlyMissing: boolean;
+};
+
 const EMPTY_FORM: AccountFormState = {
   email: "",
   username: "",
@@ -52,6 +59,15 @@ const EMPTY_FORM: AccountFormState = {
   recoveryPhone: "",
   verificationPhone: "",
 };
+
+function getEmptyFilters(): AccountFilters {
+  return {
+    q: "",
+    f2aType: "",
+    tagIds: [],
+    onlyMissing: false,
+  };
+}
 
 function getErrorMessage(data: unknown, fallback: string) {
   const parsed = data as ApiError;
@@ -76,6 +92,8 @@ export default function VaultApp() {
   const [formBusy, setFormBusy] = useState(false);
   const [draggingAccountId, setDraggingAccountId] = useState<string | null>(null);
   const [tagDropTargetId, setTagDropTargetId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<AccountFilters>(() => getEmptyFilters());
+  const [appliedFilters, setAppliedFilters] = useState<AccountFilters>(() => getEmptyFilters());
 
   const tagNameById = useMemo(() => {
     return new Map(tags.map((tag) => [tag.id, tag.name]));
@@ -105,13 +123,34 @@ export default function VaultApp() {
     return payload as T;
   }, []);
 
+  const buildAccountsUrl = useCallback((nextFilters: AccountFilters) => {
+    const params = new URLSearchParams();
+    if (nextFilters.q.trim()) {
+      params.set("q", nextFilters.q.trim());
+    }
+    if (nextFilters.f2aType) {
+      params.set("f2aType", nextFilters.f2aType);
+    }
+    if (nextFilters.tagIds.length > 0) {
+      params.set("tagIds", nextFilters.tagIds.join(","));
+    }
+    if (nextFilters.onlyMissing) {
+      params.set("onlyMissing", "1");
+    }
+
+    const query = params.toString();
+    return query ? `/api/accounts?${query}` : "/api/accounts";
+  }, []);
+
   const loadBaseData = useCallback(async () => {
+    setLoading(true);
     setError(null);
     setAuthRequired(false);
     try {
+      const accountsUrl = buildAccountsUrl(appliedFilters);
       const [tagsRes, accountsRes] = await Promise.all([
         request<{ data: { tags: Tag[] } }>("/api/tags"),
-        request<{ data: { accounts: Account[] } }>("/api/accounts"),
+        request<{ data: { accounts: Account[] } }>(accountsUrl),
       ]);
 
       setTags(tagsRes.data.tags ?? []);
@@ -121,11 +160,32 @@ export default function VaultApp() {
     } finally {
       setLoading(false);
     }
-  }, [request]);
+  }, [appliedFilters, buildAccountsUrl, request]);
 
   useEffect(() => {
     void loadBaseData();
   }, [loadBaseData]);
+
+  function applyFilters() {
+    setAppliedFilters({ ...filters, tagIds: [...filters.tagIds] });
+  }
+
+  function resetFilters() {
+    setFilters(getEmptyFilters());
+    setAppliedFilters(getEmptyFilters());
+  }
+
+  function toggleFilterTag(tagId: string, checked: boolean) {
+    setFilters((prev) => {
+      if (checked) {
+        if (prev.tagIds.includes(tagId)) {
+          return prev;
+        }
+        return { ...prev, tagIds: [...prev.tagIds, tagId] };
+      }
+      return { ...prev, tagIds: prev.tagIds.filter((id) => id !== tagId) };
+    });
+  }
 
   async function createTag() {
     const name = newTagName.trim();
@@ -498,6 +558,83 @@ export default function VaultApp() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2>账号</h2>
           <button onClick={openCreateModal}>创建账号</button>
+        </div>
+
+        <div
+          style={{
+            marginBottom: 12,
+            padding: 10,
+            border: "1px solid #eee",
+            borderRadius: 6,
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              placeholder="关键词 q"
+              value={filters.q}
+              onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
+              style={{ minWidth: 220 }}
+            />
+
+            <select
+              value={filters.f2aType}
+              onChange={(event) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  f2aType: event.target.value as "" | F2AType,
+                }))
+              }
+            >
+              <option value="">All</option>
+              <option value="LINK">LINK</option>
+              <option value="PHONE">PHONE</option>
+              <option value="UNKNOWN">UNKNOWN</option>
+            </select>
+
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <input
+                type="checkbox"
+                checked={filters.onlyMissing}
+                onChange={(event) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    onlyMissing: event.target.checked,
+                  }))
+                }
+              />
+              <span>仅缺失恢复信息</span>
+            </label>
+          </div>
+
+          <div>
+            <div style={{ marginBottom: 6, color: "#666", fontSize: 13 }}>标签筛选（可多选）</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {tags.map((tag) => {
+                const checked = filters.tagIds.includes(tag.id);
+                return (
+                  <label key={`filter-tag-${tag.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => toggleFilterTag(tag.id, event.target.checked)}
+                    />
+                    <span>{tag.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" onClick={applyFilters}>
+              应用筛选
+            </button>
+            <button type="button" onClick={resetFilters}>
+              重置
+            </button>
+          </div>
         </div>
 
         <div style={{ overflowX: "auto" }}>
