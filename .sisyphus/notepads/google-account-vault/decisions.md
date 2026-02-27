@@ -21,3 +21,11 @@
 - `Account` 敏感字段采用“**Enc 加密存储 + Search 标准化索引**”双字段策略：`passwordEnc` 仅加密；`recoveryEmail/recoveryPhone/verificationPhone` 拆为 `*Enc`（AES-256-GCM）与 `*Search`（可 `contains` 查询）。
 - 字段命名统一为 `<field>Enc` 与 `<field>Search`，避免后续迁移时语义歧义；其中 `*Search` 明确承载检索职责，不承担保密职责。
 - 加密载荷格式约定为自描述版本前缀（`v1:iv:tag:ciphertext`），便于未来轮换算法/密钥策略时实现向后兼容解密分支。
+
+## API 设计决策
+
+- API 路由结构位于 `app/api/**`
+- 认证守卫, 所有 API 端点都要求已登录, 未登录时返回 JSON 401, 不做重定向
+- 响应包裹, 成功返回 `{ ok:true, data }`, 失败返回 `{ ok:false, error:{ code, message } }`
+- 敏感字段策略, API 永远不返回任何 `*Enc/*Search` 字段或解密后的值, 只返回 `has*` 布尔值与 `tagIds`
+- 重新排序约定, 请求体 `{ ids: string[] }`, 按数组顺序将 `order` 从 0 开始连续更新
