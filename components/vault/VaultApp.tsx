@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { DragEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type F2AType = "LINK" | "PHONE" | "UNKNOWN";
 
@@ -74,6 +74,7 @@ export default function VaultApp() {
   const [form, setForm] = useState<AccountFormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [formBusy, setFormBusy] = useState(false);
+  const [draggingAccountId, setDraggingAccountId] = useState<string | null>(null);
 
   const tagNameById = useMemo(() => {
     return new Map(tags.map((tag) => [tag.id, tag.name]));
@@ -353,6 +354,61 @@ export default function VaultApp() {
     }
   }
 
+  async function reorderAccounts(sourceId: string, targetId: string) {
+    if (sourceId === targetId) {
+      return;
+    }
+
+    const fromIndex = accounts.findIndex((account) => account.id === sourceId);
+    const toIndex = accounts.findIndex((account) => account.id === targetId);
+    if (fromIndex < 0 || toIndex < 0) {
+      return;
+    }
+
+    const previousAccounts = accounts;
+    const nextAccounts = [...accounts];
+    const [moved] = nextAccounts.splice(fromIndex, 1);
+    nextAccounts.splice(toIndex, 0, moved);
+
+    setError(null);
+    setAccounts(nextAccounts);
+
+    try {
+      await request("/api/accounts/reorder", {
+        method: "POST",
+        body: JSON.stringify({ ids: nextAccounts.map((account) => account.id) }),
+      });
+    } catch (err) {
+      setAccounts(previousAccounts);
+      setError(err instanceof Error ? err.message : "账号排序失败，已恢复原顺序");
+    }
+  }
+
+  function handleAccountDragStart(event: DragEvent<HTMLTableRowElement>, accountId: string) {
+    setDraggingAccountId(accountId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", accountId);
+  }
+
+  function handleAccountDragOver(event: DragEvent<HTMLTableRowElement>) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  async function handleAccountDrop(event: DragEvent<HTMLTableRowElement>, targetId: string) {
+    event.preventDefault();
+    const sourceId = draggingAccountId || event.dataTransfer.getData("text/plain");
+    setDraggingAccountId(null);
+    if (!sourceId) {
+      return;
+    }
+    await reorderAccounts(sourceId, targetId);
+  }
+
+  function handleAccountDragEnd() {
+    setDraggingAccountId(null);
+  }
+
   return (
     <div style={{ padding: 16, display: "grid", gap: 24 }}>
       <h1>Vault App</h1>
@@ -409,6 +465,7 @@ export default function VaultApp() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
+                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", width: 36 }}>拖拽</th>
                 <th style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>Email</th>
                 <th style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>Username</th>
                 <th style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>f2aType</th>
@@ -419,7 +476,27 @@ export default function VaultApp() {
             </thead>
             <tbody>
               {accounts.map((account) => (
-                <tr key={account.id}>
+                <tr
+                  key={account.id}
+                  draggable
+                  onDragStart={(event) => handleAccountDragStart(event, account.id)}
+                  onDragOver={handleAccountDragOver}
+                  onDrop={(event) => void handleAccountDrop(event, account.id)}
+                  onDragEnd={handleAccountDragEnd}
+                  style={{ backgroundColor: draggingAccountId === account.id ? "#fafafa" : "transparent" }}
+                >
+                  <td
+                    style={{
+                      borderBottom: "1px solid #f0f0f0",
+                      padding: "8px 0",
+                      cursor: "grab",
+                      userSelect: "none",
+                      fontWeight: 600,
+                    }}
+                    aria-label="拖拽排序"
+                  >
+                    ≡
+                  </td>
                   <td style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}>{account.email}</td>
                   <td style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}>{account.username || "-"}</td>
                   <td style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}>{account.f2aType}</td>
