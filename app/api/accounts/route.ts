@@ -76,11 +76,12 @@ export async function GET(request: NextRequest) {
 
   const qRaw = searchParams.get("q")?.trim() ?? "";
   if (qRaw !== "") {
+    const qLower = qRaw.toLowerCase();
     const qDigits = extractDigits(qRaw);
     const orFilters: Prisma.AccountWhereInput[] = [
-      { email: { contains: qRaw } },
-      { username: { contains: qRaw } },
-      { recoveryEmailSearch: { contains: qRaw } },
+      { email: { contains: qLower } },
+      { username: { contains: qLower } },
+      { recoveryEmailSearch: { contains: qLower } },
     ];
 
     if (qDigits !== "") {
