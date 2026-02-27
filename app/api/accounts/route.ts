@@ -1,9 +1,11 @@
-import { Prisma, type F2AType } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "@/lib/api-auth";
 import { encryptString, normalizeSearchEmail, normalizeSearchPhone } from "@/lib/crypto";
 import prisma from "@/lib/prisma";
+
+type F2AType = "LINK" | "PHONE" | "UNKNOWN";
 
 type AccountWithTags = {
   id: string;

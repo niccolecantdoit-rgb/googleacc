@@ -1,4 +1,4 @@
-import { Prisma, type F2AType } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "@/lib/api-auth";
@@ -19,6 +19,8 @@ type AccountWithTags = {
   verificationPhoneEnc: string | null;
   accountTags: Array<{ tagId: string }>;
 };
+
+type F2AType = "LINK" | "PHONE" | "UNKNOWN";
 
 type AccountWithSensitive = AccountWithTags & {
   passwordEnc: string;
