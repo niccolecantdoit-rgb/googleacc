@@ -74,6 +74,64 @@ function getErrorMessage(data: unknown, fallback: string) {
   return parsed?.error?.message || fallback;
 }
 
+// UI Components
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    </svg>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+    </svg>
+  );
+}
+
+function GripIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="12" r="1"></circle>
+      <circle cx="9" cy="5" r="1"></circle>
+      <circle cx="9" cy="19" r="1"></circle>
+      <circle cx="15" cy="12" r="1"></circle>
+      <circle cx="15" cy="5" r="1"></circle>
+      <circle cx="15" cy="19" r="1"></circle>
+    </svg>
+  );
+}
+
 export default function VaultApp() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -497,339 +555,456 @@ export default function VaultApp() {
   }
 
   return (
-    <div style={{ padding: 16, display: "grid", gap: 24 }}>
-      <h1>Vault App</h1>
-
-      {loading ? <p>加载中...</p> : null}
-
-      {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
-
-      {authRequired ? (
-        <p style={{ color: "crimson" }}>
-          请先登录：<a href="/login">前往登录</a>
-        </p>
+    <div className="vault-shell">
+      {error ? (
+        <div style={{ gridColumn: "1 / -1" }}>
+          <p className="text-error">{error}</p>
+        </div>
       ) : null}
 
-      <section style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
-        <h2>标签管理</h2>
-        <p style={{ margin: "6px 0 10px", color: "#666", fontSize: 13 }}>拖拽账号到标签上进行打标</p>
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <input
-            value={newTagName}
-            onChange={(event) => setNewTagName(event.target.value)}
-            placeholder="输入标签名"
-          />
-          <button onClick={() => void createTag()} disabled={tagBusyId === "__create__"}>
-            创建标签
-          </button>
+      {authRequired ? (
+        <div style={{ gridColumn: "1 / -1" }}>
+          <p className="text-error">
+            请先登录：<a href="/login" style={{ textDecoration: 'underline' }}>前往登录</a>
+          </p>
         </div>
+      ) : null}
 
-        <ul style={{ display: "grid", gap: 8, margin: 0, paddingLeft: 18 }}>
-          {tags.map((tag) => (
-            <li
-              key={tag.id}
-              onDragOver={(event) => handleTagDragOver(event, tag.id)}
-              onDrop={(event) => void handleTagDrop(event, tag.id)}
-              onDragLeave={() => handleTagDragLeave(tag.id)}
-              style={{
-                border: tagDropTargetId === tag.id ? "1px dashed #1677ff" : "1px dashed transparent",
-                borderRadius: 6,
-                padding: "4px 6px",
-                transition: "border-color 120ms ease",
-              }}
-            >
-              <span style={{ marginRight: 8 }}>{tag.name}</span>
-              <button onClick={() => void renameTag(tag)} disabled={tagBusyId === tag.id}>
-                重命名
-              </button>
-              <button
-                onClick={() => void deleteTag(tag)}
-                disabled={tagBusyId === tag.id}
-                style={{ marginLeft: 6 }}
-              >
-                删除
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2>账号</h2>
-          <button onClick={openCreateModal}>创建账号</button>
-        </div>
-
-        <div
-          style={{
-            marginBottom: 12,
-            padding: 10,
-            border: "1px solid #eee",
-            borderRadius: 6,
-            display: "grid",
-            gap: 8,
-          }}
-        >
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      {/* Left Sidebar: Tags */}
+      <aside>
+        <section className="vault-panel">
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>标签管理</h2>
+          <p className="vault-hint">将账号拖拽至标签快速分类</p>
+          
+          <div className="vault-inline" style={{ marginBottom: '1.5rem' }}>
             <input
-              placeholder="关键词 q"
-              value={filters.q}
-              onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
-              style={{ minWidth: 220 }}
+              value={newTagName}
+              onChange={(event) => setNewTagName(event.target.value)}
+              placeholder="输入标签名..."
+              style={{ width: '100%' }}
             />
+            <button onClick={() => void createTag()} disabled={tagBusyId === "__create__" || !newTagName.trim()} style={{ padding: '0.625rem' }} aria-label="创建标签">
+              <PlusIcon />
+            </button>
+          </div>
 
-            <select
-              value={filters.f2aType}
-              onChange={(event) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  f2aType: event.target.value as "" | F2AType,
-                }))
-              }
-            >
-              <option value="">All</option>
-              <option value="LINK">LINK</option>
-              <option value="PHONE">PHONE</option>
-              <option value="UNKNOWN">UNKNOWN</option>
-            </select>
+          <ul className="tag-list">
+            {tags.map((tag) => (
+              <li
+                key={tag.id}
+                className="tag-item"
+                onDragOver={(event) => handleTagDragOver(event, tag.id)}
+                onDrop={(event) => void handleTagDrop(event, tag.id)}
+                onDragLeave={() => handleTagDragLeave(tag.id)}
+                style={{
+                  borderColor: tagDropTargetId === tag.id ? "var(--accent-primary)" : "var(--border-default)",
+                  backgroundColor: tagDropTargetId === tag.id ? "var(--bg-surface-hover)" : undefined,
+                }}
+              >
+                <span style={{ fontWeight: 500 }}>{tag.name}</span>
+                <div className="tag-actions">
+                  <button className="ghost-btn" onClick={() => void renameTag(tag)} disabled={tagBusyId === tag.id} title="重命名">
+                    <EditIcon />
+                  </button>
+                  <button
+                    className="danger-btn"
+                    onClick={() => void deleteTag(tag)}
+                    disabled={tagBusyId === tag.id}
+                    title="删除"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
+              </li>
+            ))}
+            {tags.length === 0 && !loading && (
+              <li style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>暂无标签</li>
+            )}
+          </ul>
+        </section>
+      </aside>
 
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <input
-                type="checkbox"
-                checked={filters.onlyMissing}
+      {/* Main Content: Accounts */}
+      <main style={{ margin: 0, width: '100%' }}>
+        <section className="vault-panel" style={{ padding: '2rem' }}>
+          <div className="vault-header">
+            <h2 style={{ fontSize: '1.5rem', margin: 0 }}>账号库</h2>
+            <button onClick={openCreateModal}>
+              <PlusIcon />
+              添加账号
+            </button>
+          </div>
+
+          <div className="vault-filter-box">
+            <div style={{ display: "flex", gap: '1rem', flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '200px' }}>
+                <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', display: 'flex' }}>
+                  <SearchIcon />
+                </div>
+                <input
+                  placeholder="搜索账号或备注..."
+                  value={filters.q}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
+                  style={{ width: '100%', paddingLeft: '2.25rem' }}
+                />
+              </div>
+
+              <select
+                value={filters.f2aType}
                 onChange={(event) =>
                   setFilters((prev) => ({
                     ...prev,
-                    onlyMissing: event.target.checked,
+                    f2aType: event.target.value as "" | F2AType,
                   }))
                 }
-              />
-              <span>仅缺失恢复信息</span>
-            </label>
-          </div>
+                style={{ flex: '0 1 auto' }}
+              >
+                <option value="">所有 2FA 类型</option>
+                <option value="LINK">LINK</option>
+                <option value="PHONE">PHONE</option>
+                <option value="UNKNOWN">UNKNOWN</option>
+              </select>
 
-          <div>
-            <div style={{ marginBottom: 6, color: "#666", fontSize: 13 }}>标签筛选（可多选）</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {tags.map((tag) => {
-                const checked = filters.tagIds.includes(tag.id);
-                return (
-                  <label key={`filter-tag-${tag.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={(event) => toggleFilterTag(tag.id, event.target.checked)}
-                    />
-                    <span>{tag.name}</span>
-                  </label>
-                );
-              })}
+              <label style={{ display: "inline-flex", alignItems: "center", gap: '0.5rem', cursor: 'pointer', flex: '0 1 auto' }}>
+                <input
+                  type="checkbox"
+                  checked={filters.onlyMissing}
+                  onChange={(event) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      onlyMissing: event.target.checked,
+                    }))
+                  }
+                />
+                <span style={{ fontSize: '0.9375rem' }}>仅显示缺失恢复信息</span>
+              </label>
+            </div>
+
+            {tags.length > 0 && (
+              <div>
+                <div className="vault-filter-label">按标签过滤</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: '0.75rem' }}>
+                  {tags.map((tag) => {
+                    const checked = filters.tagIds.includes(tag.id);
+                    return (
+                      <label key={`filter-tag-${tag.id}`} style={{ display: "inline-flex", alignItems: "center", gap: '0.375rem', cursor: 'pointer', background: checked ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-surface)', padding: '0.375rem 0.75rem', borderRadius: 'var(--radius-full)', border: `1px solid ${checked ? 'var(--accent-primary)' : 'var(--border-default)'}`, transition: 'all 0.2s ease' }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => toggleFilterTag(tag.id, event.target.checked)}
+                          style={{ display: 'none' }}
+                        />
+                        <span style={{ fontSize: '0.875rem', color: checked ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>{tag.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="vault-inline" style={{ marginTop: '0.5rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
+              <button type="button" className="ghost-btn" onClick={resetFilters}>
+                重置
+              </button>
+              <button type="button" onClick={applyFilters}>
+                <FilterIcon />
+                应用筛选
+              </button>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" onClick={applyFilters}>
-              应用筛选
-            </button>
-            <button type="button" onClick={resetFilters}>
-              重置
-            </button>
-          </div>
-        </div>
-
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", width: 36 }}>拖拽</th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>Email</th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>Username</th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>f2aType</th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>Tags</th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>标签分配</th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {accounts.map((account) => (
-                <tr
-                  key={account.id}
-                  draggable
-                  onDragStart={(event) => handleAccountDragStart(event, account.id)}
-                  onDragOver={handleAccountDragOver}
-                  onDrop={(event) => void handleAccountDrop(event, account.id)}
-                  onDragEnd={handleAccountDragEnd}
-                  style={{ backgroundColor: draggingAccountId === account.id ? "#fafafa" : "transparent" }}
-                >
-                  <td
-                    style={{
-                      borderBottom: "1px solid #f0f0f0",
-                      padding: "8px 0",
-                      cursor: "grab",
-                      userSelect: "none",
-                      fontWeight: 600,
-                    }}
-                    aria-label="拖拽排序"
-                  >
-                    ≡
-                  </td>
-                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}>{account.email}</td>
-                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}>{account.username || "-"}</td>
-                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}>{account.f2aType}</td>
-                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}>
-                    {account.tagIds.length > 0
-                      ? account.tagIds.map((tagId) => tagNameById.get(tagId) || tagId).join(", ")
-                      : "-"}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {tags.map((tag) => {
-                        const checked = account.tagIds.includes(tag.id);
-                        return (
-                          <label key={tag.id} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(event) =>
-                                void toggleAccountTag(account.id, tag.id, event.target.checked)
-                              }
-                            />
-                            <span>{tag.name}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </td>
-                  <td style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}>
-                    <button onClick={() => void openEditModal(account.id)} disabled={formBusy}>
-                      编辑
-                    </button>
-                    <button
-                      onClick={() => void deleteAccount(account)}
-                      style={{ marginLeft: 6 }}
-                      disabled={formBusy}
-                    >
-                      删除
-                    </button>
-                  </td>
+          <div className="table-container">
+            <table className="vault-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 40, paddingLeft: '1rem', paddingRight: '0' }}></th>
+                  <th>邮箱账号</th>
+                  <th>用户名</th>
+                  <th>2FA</th>
+                  <th>标签</th>
+                  <th style={{ width: 120 }}>操作</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {loading && accounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="empty-state">加载中...</td>
+                  </tr>
+                ) : accounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="empty-state">未找到匹配的账号。</td>
+                  </tr>
+                ) : (
+                  accounts.map((account) => (
+                    <tr
+                      key={account.id}
+                      draggable
+                      onDragStart={(event) => handleAccountDragStart(event, account.id)}
+                      onDragOver={handleAccountDragOver}
+                      onDrop={(event) => void handleAccountDrop(event, account.id)}
+                      onDragEnd={handleAccountDragEnd}
+                      style={{ 
+                        backgroundColor: draggingAccountId === account.id ? "var(--bg-surface-elevated)" : undefined,
+                        opacity: draggingAccountId === account.id ? 0.6 : 1
+                      }}
+                    >
+                      <td className="drag-handle" aria-label="拖拽排序" style={{ paddingLeft: '1rem', paddingRight: '0' }}>
+                        <GripIcon />
+                      </td>
+                      <td style={{ fontWeight: 500 }}>{account.email}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{account.username || <span style={{ opacity: 0.3 }}>-</span>}</td>
+                      <td>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '0.125rem 0.5rem',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          backgroundColor: account.f2aType === 'LINK' ? 'rgba(16, 185, 129, 0.1)' : account.f2aType === 'PHONE' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                          color: account.f2aType === 'LINK' ? 'var(--accent-success)' : account.f2aType === 'PHONE' ? 'var(--accent-primary)' : 'var(--text-secondary)'
+                        }}>
+                          {account.f2aType}
+                        </span>
+                      </td>
+                      <td>
+                        {account.tagIds.length > 0 ? (
+                          <div className="tag-badges">
+                            {account.tagIds.map((tagId) => (
+                              <span key={tagId} className="tag-badge">
+                                {tagNameById.get(tagId) || tagId}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>未分类</span>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button className="ghost-btn" style={{ padding: '0.375rem 0.625rem' }} onClick={() => void openEditModal(account.id)} disabled={formBusy} title="编辑">
+                            <EditIcon />
+                          </button>
+                          <button
+                            className="danger-btn"
+                            style={{ padding: '0.375rem 0.625rem' }}
+                            onClick={() => void deleteAccount(account)}
+                            disabled={formBusy}
+                            title="删除"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
 
+      {/* Create Modal */}
       {showCreateModal ? (
-        <div style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
-          <h3>创建账号</h3>
-          <form onSubmit={submitCreateAccount} style={{ display: "grid", gap: 8 }}>
-            <input
-              placeholder="email"
-              value={form.email}
-              onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-            />
-            <input
-              placeholder="username"
-              value={form.username}
-              onChange={(event) => setForm((prev) => ({ ...prev, username: event.target.value }))}
-            />
-            <select
-              value={form.f2aType}
-              onChange={(event) => setForm((prev) => ({ ...prev, f2aType: event.target.value as F2AType }))}
-            >
-              <option value="UNKNOWN">UNKNOWN</option>
-              <option value="LINK">LINK</option>
-              <option value="PHONE">PHONE</option>
-            </select>
-            <input
-              placeholder="password (必填)"
-              value={form.password}
-              onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-            />
-            <input
-              placeholder="recoveryEmail"
-              value={form.recoveryEmail}
-              onChange={(event) => setForm((prev) => ({ ...prev, recoveryEmail: event.target.value }))}
-            />
-            <input
-              placeholder="recoveryPhone"
-              value={form.recoveryPhone}
-              onChange={(event) => setForm((prev) => ({ ...prev, recoveryPhone: event.target.value }))}
-            />
-            <input
-              placeholder="verificationPhone"
-              value={form.verificationPhone}
-              onChange={(event) => setForm((prev) => ({ ...prev, verificationPhone: event.target.value }))}
-            />
+        <div className="modal-overlay">
+          <div className="vault-modal">
+            <h3>添加新账号</h3>
+            <form onSubmit={submitCreateAccount} className="modal-form-grid">
+              <div className="modal-form-row">
+                <label>邮箱 (必填)</label>
+                <input
+                  required
+                  placeholder="example@gmail.com"
+                  value={form.email}
+                  onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                />
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-row">
+                  <label>密码 (必填)</label>
+                  <input
+                    required
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+                  />
+                </div>
+                <div className="modal-form-row">
+                  <label>2FA 类型</label>
+                  <select
+                    value={form.f2aType}
+                    onChange={(event) => setForm((prev) => ({ ...prev, f2aType: event.target.value as F2AType }))}
+                  >
+                    <option value="UNKNOWN">UNKNOWN</option>
+                    <option value="LINK">LINK</option>
+                    <option value="PHONE">PHONE</option>
+                  </select>
+                </div>
+              </div>
 
-            {formError ? <p style={{ color: "crimson" }}>{formError}</p> : null}
+              <div className="modal-form-row">
+                <label>用户名</label>
+                <input
+                  placeholder="选填"
+                  value={form.username}
+                  onChange={(event) => setForm((prev) => ({ ...prev, username: event.target.value }))}
+                />
+              </div>
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="submit" disabled={formBusy}>
-                保存
-              </button>
-              <button type="button" onClick={closeCreateModal}>
-                取消
-              </button>
-            </div>
-          </form>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-row">
+                  <label>恢复邮箱</label>
+                  <input
+                    placeholder="选填"
+                    value={form.recoveryEmail}
+                    onChange={(event) => setForm((prev) => ({ ...prev, recoveryEmail: event.target.value }))}
+                  />
+                </div>
+                <div className="modal-form-row">
+                  <label>恢复手机</label>
+                  <input
+                    placeholder="选填"
+                    value={form.recoveryPhone}
+                    onChange={(event) => setForm((prev) => ({ ...prev, recoveryPhone: event.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-form-row">
+                <label>验证手机号</label>
+                <input
+                  placeholder="选填"
+                  value={form.verificationPhone}
+                  onChange={(event) => setForm((prev) => ({ ...prev, verificationPhone: event.target.value }))}
+                />
+              </div>
+
+              {formError ? <p className="text-error">{formError}</p> : null}
+
+              <div className="modal-actions">
+                <button type="button" className="ghost-btn" onClick={closeCreateModal}>
+                  取消
+                </button>
+                <button type="submit" disabled={formBusy}>
+                  保存账号
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       ) : null}
 
+      {/* Edit Modal */}
       {showEditModal ? (
-        <div style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
-          <h3>编辑账号</h3>
-          <form onSubmit={submitEditAccount} style={{ display: "grid", gap: 8 }}>
-            <input
-              placeholder="email"
-              value={form.email}
-              onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-            />
-            <input
-              placeholder="username"
-              value={form.username}
-              onChange={(event) => setForm((prev) => ({ ...prev, username: event.target.value }))}
-            />
-            <select
-              value={form.f2aType}
-              onChange={(event) => setForm((prev) => ({ ...prev, f2aType: event.target.value as F2AType }))}
-            >
-              <option value="UNKNOWN">UNKNOWN</option>
-              <option value="LINK">LINK</option>
-              <option value="PHONE">PHONE</option>
-            </select>
-            <input
-              placeholder="password"
-              value={form.password}
-              onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-            />
-            <input
-              placeholder="recoveryEmail"
-              value={form.recoveryEmail}
-              onChange={(event) => setForm((prev) => ({ ...prev, recoveryEmail: event.target.value }))}
-            />
-            <input
-              placeholder="recoveryPhone"
-              value={form.recoveryPhone}
-              onChange={(event) => setForm((prev) => ({ ...prev, recoveryPhone: event.target.value }))}
-            />
-            <input
-              placeholder="verificationPhone"
-              value={form.verificationPhone}
-              onChange={(event) => setForm((prev) => ({ ...prev, verificationPhone: event.target.value }))}
-            />
+        <div className="modal-overlay">
+          <div className="vault-modal">
+            <h3>编辑账号</h3>
+            <form onSubmit={submitEditAccount} className="modal-form-grid">
+              <div className="modal-form-row">
+                <label>邮箱</label>
+                <input
+                  required
+                  placeholder="example@gmail.com"
+                  value={form.email}
+                  onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                />
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-row">
+                  <label>密码 (留空不修改)</label>
+                  <input
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+                  />
+                </div>
+                <div className="modal-form-row">
+                  <label>2FA 类型</label>
+                  <select
+                    value={form.f2aType}
+                    onChange={(event) => setForm((prev) => ({ ...prev, f2aType: event.target.value as F2AType }))}
+                  >
+                    <option value="UNKNOWN">UNKNOWN</option>
+                    <option value="LINK">LINK</option>
+                    <option value="PHONE">PHONE</option>
+                  </select>
+                </div>
+              </div>
 
-            {formError ? <p style={{ color: "crimson" }}>{formError}</p> : null}
+              <div className="modal-form-row">
+                <label>用户名</label>
+                <input
+                  placeholder="选填"
+                  value={form.username}
+                  onChange={(event) => setForm((prev) => ({ ...prev, username: event.target.value }))}
+                />
+              </div>
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="submit" disabled={formBusy}>
-                保存
-              </button>
-              <button type="button" onClick={closeEditModal}>
-                取消
-              </button>
-            </div>
-          </form>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-row">
+                  <label>恢复邮箱</label>
+                  <input
+                    placeholder="选填"
+                    value={form.recoveryEmail}
+                    onChange={(event) => setForm((prev) => ({ ...prev, recoveryEmail: event.target.value }))}
+                  />
+                </div>
+                <div className="modal-form-row">
+                  <label>恢复手机</label>
+                  <input
+                    placeholder="选填"
+                    value={form.recoveryPhone}
+                    onChange={(event) => setForm((prev) => ({ ...prev, recoveryPhone: event.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-form-row">
+                <label>验证手机号</label>
+                <input
+                  placeholder="选填"
+                  value={form.verificationPhone}
+                  onChange={(event) => setForm((prev) => ({ ...prev, verificationPhone: event.target.value }))}
+                />
+              </div>
+
+              <div className="modal-form-row">
+                <label>分配标签</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: '0.5rem', marginTop: '0.25rem', padding: '0.75rem', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
+                  {tags.map((tag) => {
+                    const account = accounts.find(a => a.id === editingAccountId);
+                    const checked = account?.tagIds.includes(tag.id) || false;
+                    return (
+                      <label key={`edit-tag-${tag.id}`} style={{ display: "inline-flex", alignItems: "center", gap: '0.375rem', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) =>
+                            editingAccountId && void toggleAccountTag(editingAccountId, tag.id, event.target.checked)
+                          }
+                        />
+                        <span style={{ fontSize: '0.875rem' }}>{tag.name}</span>
+                      </label>
+                    );
+                  })}
+                  {tags.length === 0 && <span style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>暂无可选标签</span>}
+                </div>
+              </div>
+
+              {formError ? <p className="text-error">{formError}</p> : null}
+
+              <div className="modal-actions">
+                <button type="button" className="ghost-btn" onClick={closeEditModal}>
+                  取消
+                </button>
+                <button type="submit" disabled={formBusy}>
+                  保存修改
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       ) : null}
     </div>
