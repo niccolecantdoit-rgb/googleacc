@@ -18,3 +18,107 @@
 - `ENCRYPTION_KEY` 在本项目约定为 **base64 编码后的 32 字节密钥**（解码后必须严格等于 32 bytes），否则应在启动/调用加密时立即抛错。
 - 推荐密钥生成方式：`node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`；生成后写入 `.env`，禁止将明文敏感数据或真实密钥提交到仓库。
 - AES-256-GCM 落地时需同时保存 `iv` 与 `authTag`；解密失败必须显式报错，避免静默吞错导致数据损坏难以定位。
+
+### API smoke test（鉴权 API，最小可跑）
+
+- 本地启动需要环境变量：`DATABASE_URL`、`APP_SECRET`、`ENCRYPTION_KEY`。
+- 用一个临时 SQLite DB 跑迁移（避免污染默认 `dev.db`）：
+
+```bash
+# macOS/Linux/Git Bash
+export DATABASE_URL="file:./prisma/smoke.db"
+export APP_SECRET="dev-secret"
+export ENCRYPTION_KEY="<base64-32-bytes>"
+npm run prisma:generate
+npm run prisma:migrate -- --name smoke --skip-generate
+npm run dev
+```
+
+```powershell
+# PowerShell
+$env:DATABASE_URL="file:./prisma/smoke.db"
+$env:APP_SECRET="dev-secret"
+$env:ENCRYPTION_KEY="<base64-32-bytes>"
+npm run prisma:generate
+npm run prisma:migrate -- --name smoke --skip-generate
+npm run dev
+```
+
+- 鉴权机制：受保护 API 通过 `gav_session`（HMAC SHA256 签名 token）识别登录态。该 cookie 设置为 `httpOnly`，浏览器 JS 读不到；做 headless QA 时直接生成 `Cookie` header 传给接口。
+
+```bash
+# 一次性脚本：
+# 1) 写入/覆盖 singleton user（id=1）
+# 2) 生成 gav_session
+# 3) 调用 API：创建 tag -> 创建 account -> 绑定 tag
+node - <<'NODE'
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+const { createHmac, randomBytes } = require('node:crypto');
+
+const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000';
+const APP_SECRET = process.env.APP_SECRET;
+if (!APP_SECRET) throw new Error('APP_SECRET is required');
+
+function sign(value) {
+  return createHmac('sha256', APP_SECRET).update(value).digest('base64url');
+}
+
+function makeSessionCookie(userId) {
+  const issuedAt = Date.now();
+  const nonce = randomBytes(16).toString('base64url');
+  const raw = `${userId}.${issuedAt}.${nonce}`;
+  const encoded = Buffer.from(raw).toString('base64url');
+  const token = `${encoded}.${sign(encoded)}`;
+  return `gav_session=${token}`;
+}
+
+async function api(path, { method = 'GET', body } = {}) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      'content-type': 'application/json',
+      cookie: makeSessionCookie(1),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} ${path}: ${JSON.stringify(json)}`);
+  }
+  return json;
+}
+
+(async () => {
+  const prisma = new PrismaClient();
+  try {
+    const passwordHash = await bcrypt.hash('dev-password', 12);
+    await prisma.user.upsert({
+      where: { id: 1 },
+      update: { passwordHash },
+      create: { passwordHash },
+    });
+
+    const tagResp = await api('/api/tags', { method: 'POST', body: { name: `smoke-${Date.now()}` } });
+    const tagId = tagResp.data.tag.id;
+    console.log('tagId:', tagId);
+
+    const accountResp = await api('/api/accounts', {
+      method: 'POST',
+      body: { email: `smoke+${Date.now()}@example.com`, password: 'p@ssw0rd' },
+    });
+    const accountId = accountResp.data.account.id;
+    console.log('accountId:', accountId);
+
+    await api(`/api/accounts/${accountId}/tags`, { method: 'POST', body: { tagId } });
+    console.log('assigned tag -> ok');
+  } finally {
+    await prisma.$disconnect();
+  }
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
+NODE
+```
