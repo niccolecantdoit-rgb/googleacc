@@ -20,6 +20,10 @@ type AccountWithTags = {
   accountTags: Array<{ tagId: string }>;
 };
 
+type AccountWithSensitive = AccountWithTags & {
+  passwordEnc: string;
+};
+
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
@@ -109,7 +113,7 @@ async function getAccountWithSensitiveOrNull(id: string) {
       ...ACCOUNT_SELECT,
       passwordEnc: true,
     },
-  });
+  }) as Promise<AccountWithSensitive | null>;
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
@@ -120,16 +124,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   const { id } = await context.params;
   const includeSensitive = request.nextUrl.searchParams.get("includeSensitive") === "1";
-  const account = includeSensitive ? await getAccountWithSensitiveOrNull(id) : await getAccountOrNull(id);
-
-  if (!account) {
-    return notFound();
-  }
 
   if (includeSensitive) {
+    const account = await getAccountWithSensitiveOrNull(id);
+    if (!account) {
+      return notFound();
+    }
+
     try {
       const sensitive = {
-        password: decryptString(account.passwordEnc ?? ""),
+        password: decryptString(account.passwordEnc),
         recoveryEmail: account.recoveryEmailEnc ? decryptString(account.recoveryEmailEnc) : null,
         recoveryPhone: account.recoveryPhoneEnc ? decryptString(account.recoveryPhoneEnc) : null,
         verificationPhone: account.verificationPhoneEnc ? decryptString(account.verificationPhoneEnc) : null,
@@ -155,6 +159,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
         { status: 500 },
       );
     }
+  }
+
+  const account = await getAccountOrNull(id);
+  if (!account) {
+    return notFound();
   }
 
   return NextResponse.json({
