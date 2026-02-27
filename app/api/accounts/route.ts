@@ -61,13 +61,74 @@ function toNullableTrimmed(value: unknown): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-export async function GET() {
+function extractDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+export async function GET(request: NextRequest) {
   const auth = await requireApiAuth();
   if ("response" in auth) {
     return auth.response;
   }
 
+  const searchParams = request.nextUrl.searchParams;
+  const whereAnd: Prisma.AccountWhereInput[] = [];
+
+  const qRaw = searchParams.get("q")?.trim() ?? "";
+  if (qRaw !== "") {
+    const qDigits = extractDigits(qRaw);
+    const orFilters: Prisma.AccountWhereInput[] = [
+      { email: { contains: qRaw } },
+      { username: { contains: qRaw } },
+      { recoveryEmailSearch: { contains: qRaw } },
+    ];
+
+    if (qDigits !== "") {
+      orFilters.push(
+        { recoveryPhoneSearch: { contains: qDigits } },
+        { verificationPhoneSearch: { contains: qDigits } },
+      );
+    }
+
+    whereAnd.push({ OR: orFilters });
+  }
+
+  const f2aTypeRaw = searchParams.get("f2aType");
+  if (f2aTypeRaw !== null) {
+    if (f2aTypeRaw !== "LINK" && f2aTypeRaw !== "PHONE" && f2aTypeRaw !== "UNKNOWN") {
+      return badRequest("f2aType must be LINK, PHONE, or UNKNOWN.");
+    }
+    whereAnd.push({ f2aType: f2aTypeRaw });
+  }
+
+  const tagIdsRaw = searchParams.get("tagIds");
+  if (tagIdsRaw !== null) {
+    const tagIds = tagIdsRaw
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item !== "");
+
+    if (tagIds.length > 0) {
+      whereAnd.push({
+        accountTags: {
+          some: {
+            tagId: { in: tagIds },
+          },
+        },
+      });
+    }
+  }
+
+  if (searchParams.get("onlyMissing") === "1") {
+    whereAnd.push({
+      OR: [{ recoveryEmailEnc: null }, { recoveryPhoneEnc: null }, { verificationPhoneEnc: null }],
+    });
+  }
+
+  const where: Prisma.AccountWhereInput | undefined = whereAnd.length > 0 ? { AND: whereAnd } : undefined;
+
   const accounts = await prisma.account.findMany({
+    where,
     orderBy: [{ order: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
